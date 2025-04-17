@@ -127,12 +127,12 @@ export default function TodoApp() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-8">
-          <div className="flex justify-between">
-            <div className="m-2.5">
+          <div className="flex justify-between flex-wrap">
+            <div className="m-2.5 flex flex-col sm:flex-row gap-2">
               <h1 className="text-3xl font-bold text-gray-800">My Tasks</h1>
-              <p className="text-gray-600">Organize your day efficiently</p>
+              <p className="text-gray-600 text-sm sm:text-base">Organize your day efficiently</p>
             </div>
             <div>
               <button
@@ -211,7 +211,7 @@ export default function TodoApp() {
 
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-          <div className="bg-white border rounded-lg shadow-lg w-96 max-w-full">
+          <div className="bg-white border rounded-lg shadow-lg w-full sm:w-96 max-w-full">
             <div className="p-6 pb-3 flex justify-between items-center">
               <h3 className="text-lg font-semibold">Create Task</h3>
               <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
