@@ -1,4 +1,15 @@
-import { Trash2, CheckCircle, Circle, Loader2, X, Clock, Calendar, PlusCircle, Search, Filter } from "lucide-react";
+import {
+  Trash2,
+  CheckCircle,
+  Circle,
+  Loader2,
+  X,
+  Clock,
+  Calendar,
+  PlusCircle,
+  Search,
+  Filter,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 
 export default function TodoApp() {
@@ -6,7 +17,11 @@ export default function TodoApp() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [newTask, setNewTask] = useState({ name: "", description: "", priority: "medium" });
+  const [newTask, setNewTask] = useState({
+    name: "",
+    description: "",
+    priority: "medium",
+  });
   const [modalError, setModalError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
@@ -29,29 +44,40 @@ export default function TodoApp() {
   const fetchTasks = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/tasks");
+      const response = await fetch(
+        "https://nitinreddy118.pythonanywhere.com//api/tasks"
+      );
       const result = await response.json();
       setTasks(result);
       setError(null);
     } catch (err) {
       console.error("Error fetching tasks:", err);
-      setError("Failed to load tasks. Please check if the server is running at http://127.0.0.1:5000/api/tasks");
+      setError(
+        "Failed to load tasks. Please check if the server is running at https://nitinreddy118.pythonanywhere.com//api/tasks"
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const toggleTaskStatus = async (taskId, currentStatus) => {
-    const newStatus = currentStatus === "done" ? "pending" : "done"; 
+    const newStatus = currentStatus === "done" ? "pending" : "done";
 
-    setTasks(tasks.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)));
+    setTasks(
+      tasks.map((task) =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      )
+    );
 
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/tasks/${taskId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const response = await fetch(
+        `https://nitinreddy118.pythonanywhere.com//api/tasks/${taskId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to update task. Status: ${response.status}`);
@@ -69,9 +95,12 @@ export default function TodoApp() {
     setTasks(tasks.filter((task) => task.id !== taskId));
 
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/tasks/${taskId}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `https://nitinreddy118.pythonanywhere.com//api/tasks/${taskId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to delete task. Status: ${response.status}`);
@@ -92,30 +121,35 @@ export default function TodoApp() {
 
     try {
       setModalError(null);
-      const response = await fetch("http://127.0.0.1:5000/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newTask.name,
-          description: newTask.description,
-          status: "pending",
-          priority: newTask.priority,
-          createdAt: new Date().toISOString(),
-        }),
-      });
+      const response = await fetch(
+        "https://nitinreddy118.pythonanywhere.com//api/tasks",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: newTask.name,
+            description: newTask.description,
+            status: "pending",
+            priority: newTask.priority,
+            createdAt: new Date().toISOString(),
+          }),
+        }
+      );
 
       if (response.ok) {
         closeModal();
-        await fetchTasks(); 
+        await fetchTasks();
       } else {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || `Server responded with ${response.status}`);
+        throw new Error(
+          errorData?.message || `Server responded with ${response.status}`
+        );
       }
     } catch (err) {
       console.error("Error adding task:", err);
       setModalError(
         err.message === "Failed to fetch"
-          ? "Unable to connect to the server. Please check if the server is running at http://127.0.0.1:5000/api/tasks"
+          ? "Unable to connect to the server. Please check if the server is running at https://nitinreddy118.pythonanywhere.com//api/tasks"
           : `Error adding task: ${err.message}`
       );
     }
@@ -131,11 +165,12 @@ export default function TodoApp() {
 
   const getFilteredTasks = () => {
     return tasks
-      .filter(task => 
-        task.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        task.description.toLowerCase().includes(searchTerm.toLowerCase())
+      .filter(
+        (task) =>
+          task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          task.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
-      .filter(task => {
+      .filter((task) => {
         if (filter === "all") return true;
         if (filter === "done") return task.status === "done";
         if (filter === "pending") return task.status === "pending";
@@ -144,11 +179,15 @@ export default function TodoApp() {
   };
 
   const getPriorityClass = (priority) => {
-    switch(priority) {
-      case "high": return "bg-red-100 text-red-800";
-      case "medium": return "bg-yellow-100 text-yellow-800";
-      case "low": return "bg-green-100 text-green-800";
-      default: return "bg-gray-100 text-gray-800";
+    switch (priority) {
+      case "high":
+        return "bg-red-100 text-red-800";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "low":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -174,7 +213,7 @@ export default function TodoApp() {
               </button>
             </div>
           </div>
-          
+
           <div className="mt-6 flex flex-col sm:flex-row gap-4">
             <div className="relative flex-grow">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -188,7 +227,7 @@ export default function TodoApp() {
                 className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            
+
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Filter className="h-5 w-5 text-gray-400" />
@@ -210,7 +249,9 @@ export default function TodoApp() {
           <div className="p-6 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-lg font-medium text-gray-800">My Tasks</h2>
             <span className="text-sm text-gray-500">
-              {tasks.length > 0 ? `${filteredTasks.length} of ${tasks.length} tasks` : "No tasks"}
+              {tasks.length > 0
+                ? `${filteredTasks.length} of ${tasks.length} tasks`
+                : "No tasks"}
             </span>
           </div>
 
@@ -224,10 +265,12 @@ export default function TodoApp() {
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-500 mb-4">
                 <X className="w-8 h-8" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Connection Error</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Connection Error
+              </h3>
               <p className="text-gray-600 mb-4">{error}</p>
-              <button 
-                onClick={fetchTasks} 
+              <button
+                onClick={fetchTasks}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
               >
                 Try Again
@@ -240,10 +283,14 @@ export default function TodoApp() {
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-500 mb-4">
                     <PlusCircle className="w-8 h-8" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Your task list is empty</h3>
-                  <p className="text-gray-600 mb-4">Create your first task to get started!</p>
-                  <button 
-                    onClick={() => setShowModal(true)} 
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Your task list is empty
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Create your first task to get started!
+                  </p>
+                  <button
+                    onClick={() => setShowModal(true)}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
                   >
                     Add Task
@@ -254,15 +301,24 @@ export default function TodoApp() {
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-100 text-yellow-500 mb-4">
                     <Search className="w-8 h-8" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No matching tasks</h3>
-                  <p className="text-gray-600">Try changing your search or filter settings</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No matching tasks
+                  </h3>
+                  <p className="text-gray-600">
+                    Try changing your search or filter settings
+                  </p>
                 </>
               )}
             </div>
           ) : (
             <ul className="divide-y divide-gray-200">
               {filteredTasks.map((task) => (
-                <li key={task.id} className={`p-4 hover:bg-gray-50 transition ${task.status === 'done' ? 'bg-gray-50' : ''}`}>
+                <li
+                  key={task.id}
+                  className={`p-4 hover:bg-gray-50 transition ${
+                    task.status === "done" ? "bg-gray-50" : ""
+                  }`}
+                >
                   <div className="flex items-start gap-4">
                     <button
                       onClick={() => toggleTaskStatus(task.id, task.status)}
@@ -278,32 +334,44 @@ export default function TodoApp() {
                     <div className="flex-grow min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3
-                          className={`font-medium ${task.status === "done" ? "text-gray-500 line-through" : "text-gray-800"}`}
+                          className={`font-medium ${
+                            task.status === "done"
+                              ? "text-gray-500 line-through"
+                              : "text-gray-800"
+                          }`}
                         >
                           {task.name}
                         </h3>
                         {task.priority && (
-                          <span className={`text-xs px-2 py-1 rounded-full ${getPriorityClass(task.priority)}`}>
-                            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full ${getPriorityClass(
+                              task.priority
+                            )}`}
+                          >
+                            {task.priority.charAt(0).toUpperCase() +
+                              task.priority.slice(1)}
                           </span>
                         )}
                       </div>
-                      
+
                       {task.description && (
                         <p
                           className={`text-sm ${
-                            task.status === "done" ? "text-gray-400" : "text-gray-600"
+                            task.status === "done"
+                              ? "text-gray-400"
+                              : "text-gray-600"
                           }`}
                         >
                           {task.description}
                         </p>
                       )}
-                      
+
                       {task.createdAt && (
                         <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
                           <Clock className="w-3 h-3" />
                           <span>
-                            Created {new Date(task.createdAt).toLocaleDateString()}
+                            Created{" "}
+                            {new Date(task.createdAt).toLocaleDateString()}
                           </span>
                         </div>
                       )}
@@ -328,9 +396,11 @@ export default function TodoApp() {
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30 backdrop-blur-sm p-4">
           <div className="bg-white border rounded-xl shadow-xl w-full sm:w-96 max-w-full animate-fadeIn">
             <div className="p-6 pb-3 flex justify-between items-center border-b">
-              <h3 className="text-xl font-semibold text-gray-800">Create New Task</h3>
-              <button 
-                onClick={closeModal} 
+              <h3 className="text-xl font-semibold text-gray-800">
+                Create New Task
+              </h3>
+              <button
+                onClick={closeModal}
                 className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
               >
                 <X className="w-5 h-5" />
@@ -340,7 +410,12 @@ export default function TodoApp() {
             <div className="p-6">
               <div className="grid gap-5">
                 <div className="flex flex-col space-y-1.5">
-                  <label htmlFor="name" className="text-sm font-medium text-gray-700">Task Name</label>
+                  <label
+                    htmlFor="name"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Task Name
+                  </label>
                   <input
                     id="name"
                     value={newTask.name}
@@ -349,9 +424,14 @@ export default function TodoApp() {
                     className="h-10 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div className="flex flex-col space-y-1.5">
-                  <label htmlFor="description" className="text-sm font-medium text-gray-700">Description</label>
+                  <label
+                    htmlFor="description"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Description
+                  </label>
                   <textarea
                     id="description"
                     value={newTask.description}
@@ -361,9 +441,14 @@ export default function TodoApp() {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div className="flex flex-col space-y-1.5">
-                  <label htmlFor="priority" className="text-sm font-medium text-gray-700">Priority</label>
+                  <label
+                    htmlFor="priority"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Priority
+                  </label>
                   <select
                     id="priority"
                     value={newTask.priority}
@@ -398,7 +483,9 @@ export default function TodoApp() {
                 onClick={addTask}
                 disabled={!newTask.name.trim()}
                 className={`rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  newTask.name.trim() ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-400 cursor-not-allowed"
+                  newTask.name.trim()
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-blue-400 cursor-not-allowed"
                 }`}
               >
                 Create Task
