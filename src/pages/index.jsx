@@ -41,23 +41,47 @@ export default function TodoApp() {
     setModalError(null);
   };
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (retries = 3, delay = 1000) => {
     setLoading(true);
-    try {
-      const response = await fetch(
-        "https://nitinreddy118.pythonanywhere.com//api/tasks"
-      );
-      const result = await response.json();
-      setTasks(result);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
-      setError(
-        "Failed to load tasks. Please check if the server is running at https://nitinreddy118.pythonanywhere.com//api/tasks"
-      );
-    } finally {
-      setLoading(false);
-    }
+    setError(null);
+
+    const attemptFetch = async (attempt) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
+
+        const response = await fetch(
+          "https://nitinreddy118.pythonanywhere.com/api/tasks",
+          { signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}`);
+        }
+
+        const result = await response.json();
+        setTasks(result);
+        setError(null);
+        setLoading(false);
+      } catch (err) {
+        if (attempt < retries) {
+          // Exponential backoff: delay * 2^attempt
+          await new Promise((resolve) =>
+            setTimeout(resolve, delay * Math.pow(2, attempt))
+          );
+          return attemptFetch(attempt + 1);
+        } else {
+          console.error("Error fetching tasks:", err);
+          setError(
+            "Failed to load tasks. Please check your network or try again later."
+          );
+          setLoading(false);
+        }
+      }
+    };
+
+    attemptFetch(0);
   };
 
   const toggleTaskStatus = async (taskId, currentStatus) => {
@@ -71,7 +95,7 @@ export default function TodoApp() {
 
     try {
       const response = await fetch(
-        `https://nitinreddy118.pythonanywhere.com//api/tasks/${taskId}`,
+        `https://nitinreddy118.pythonanywhere.com/api/tasks/${taskId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -96,7 +120,7 @@ export default function TodoApp() {
 
     try {
       const response = await fetch(
-        `https://nitinreddy118.pythonanywhere.com//api/tasks/${taskId}`,
+        `https://nitinreddy118.pythonanywhere.com/api/tasks/${taskId}`,
         {
           method: "DELETE",
         }
@@ -122,7 +146,7 @@ export default function TodoApp() {
     try {
       setModalError(null);
       const response = await fetch(
-        "https://nitinreddy118.pythonanywhere.com//api/tasks",
+        "https://nitinreddy118.pythonanywhere.com/api/tasks",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -149,7 +173,7 @@ export default function TodoApp() {
       console.error("Error adding task:", err);
       setModalError(
         err.message === "Failed to fetch"
-          ? "Unable to connect to the server. Please check if the server is running at https://nitinreddy118.pythonanywhere.com//api/tasks"
+          ? "Unable to connect to the server. Please try again."
           : `Error adding task: ${err.message}`
       );
     }
@@ -270,7 +294,7 @@ export default function TodoApp() {
               </h3>
               <p className="text-gray-600 mb-4">{error}</p>
               <button
-                onClick={fetchTasks}
+                onClick={() => fetchTasks()}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
               >
                 Try Again
@@ -393,26 +417,34 @@ export default function TodoApp() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30 backdrop-blur-sm p-4">
-          <div className="bg-white border rounded-xl shadow-xl w-full sm:w-96 max-w-full animate-fadeIn">
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-opacity-30 backdrop-blur-lg p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-md animate-fadeIn scale-95 sm:scale-100 transition-all duration-300">
+            {/* Header */}
             <div className="p-6 pb-3 flex justify-between items-center border-b">
-              <h3 className="text-xl font-semibold text-gray-800">
+              <h3 className="text-2xl font-bold text-gray-900">
                 Create New Task
               </h3>
               <button
                 onClick={closeModal}
-                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="p-6">
+            {/* Content */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                addTask();
+              }}
+              className="p-6"
+            >
               <div className="grid gap-5">
-                <div className="flex flex-col space-y-1.5">
+                <div>
                   <label
                     htmlFor="name"
-                    className="text-sm font-medium text-gray-700"
+                    className="block text-sm font-medium text-gray-700 mb-1"
                   >
                     Task Name
                   </label>
@@ -421,14 +453,15 @@ export default function TodoApp() {
                     value={newTask.name}
                     onChange={handleInputChange}
                     placeholder="What needs to be done?"
-                    className="h-10 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                    autoFocus
+                    className="h-10 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   />
                 </div>
-
-                <div className="flex flex-col space-y-1.5">
+                <div>
                   <label
                     htmlFor="description"
-                    className="text-sm font-medium text-gray-700"
+                    className="block text-sm font-medium text-gray-700 mb-1"
                   >
                     Description
                   </label>
@@ -437,30 +470,12 @@ export default function TodoApp() {
                     value={newTask.description}
                     onChange={handleInputChange}
                     placeholder="Enter details about this task (min 10 characters)"
-                    rows="3"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows={3}
+                    minLength={10}
+                    required
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
                   />
                 </div>
-
-                <div className="flex flex-col space-y-1.5">
-                  <label
-                    htmlFor="priority"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Priority
-                  </label>
-                  <select
-                    id="priority"
-                    value={newTask.priority}
-                    onChange={handleInputChange}
-                    className="h-10 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-
                 {modalError && (
                   <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-200 flex items-center gap-2">
                     <X className="w-4 h-4" />
@@ -468,37 +483,35 @@ export default function TodoApp() {
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 rounded-b-xl">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={addTask}
-                disabled={!newTask.name.trim()}
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  newTask.name.trim()
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-blue-400 cursor-not-allowed"
-                }`}
-              >
-                Create Task
-              </button>
-            </div>
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 pt-6 mt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newTask.name.trim()}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                    newTask.name.trim()
+                      ? "bg-blue-600 hover:bg-blue-700"
+                      : "bg-blue-400 cursor-not-allowed"
+                  }`}
+                >
+                  Create Task
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Footer with Copyright */}
       <footer className="text-center py-8 mt-8 text-sm text-gray-600">
         <p className="flex items-center justify-center gap-1">
-          <span>© 2025 Developed by Nitin Reddy.</span>
+          <span>© 2024 Developed by Nitin Reddy.</span>
           <span className="text-blue-600">All rights reserved.</span>
         </p>
       </footer>
