@@ -48,7 +48,7 @@ export default function TodoApp() {
     const attemptFetch = async (attempt) => {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const response = await fetch(
           "https://nitinreddy118.pythonanywhere.com/api/tasks",
@@ -66,7 +66,6 @@ export default function TodoApp() {
         setLoading(false);
       } catch (err) {
         if (attempt < retries) {
-          // Exponential backoff: delay * 2^attempt
           await new Promise((resolve) =>
             setTimeout(resolve, delay * Math.pow(2, attempt))
           );
@@ -137,46 +136,62 @@ export default function TodoApp() {
     }
   };
 
-  const addTask = async () => {
+  const addTask = async (retries = 3, delay = 1000) => {
     if (!newTask.name.trim() || newTask.description.trim().length < 10) {
       setModalError("Description must be at least 10 characters long");
       return;
     }
 
-    try {
-      setModalError(null);
-      const response = await fetch(
-        "https://nitinreddy118.pythonanywhere.com/api/tasks",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: newTask.name,
-            description: newTask.description,
-            status: "pending",
-            priority: newTask.priority,
-            createdAt: new Date().toISOString(),
-          }),
-        }
-      );
+    const attemptPost = async (attempt) => {
+      try {
+        setModalError(null);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      if (response.ok) {
-        closeModal();
-        await fetchTasks();
-      } else {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || `Server responded with ${response.status}`
+        const response = await fetch(
+          "https://nitinreddy118.pythonanywhere.com/api/tasks",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: newTask.name,
+              description: newTask.description,
+              status: "pending",
+              priority: newTask.priority,
+              createdAt: new Date().toISOString(),
+            }),
+            signal: controller.signal,
+          }
         );
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          closeModal();
+          await fetchTasks();
+        } else {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(
+            errorData?.message || `Server responded with ${response.status}`
+          );
+        }
+      } catch (err) {
+        if (attempt < retries) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, delay * Math.pow(2, attempt))
+          );
+          return attemptPost(attempt + 1);
+        } else {
+          console.error("Error adding task:", err);
+          setModalError(
+            err.name === "AbortError"
+              ? "Request timed out. Please try again."
+              : "Failed to add task. Please check your network or try again."
+          );
+        }
       }
-    } catch (err) {
-      console.error("Error adding task:", err);
-      setModalError(
-        err.message === "Failed to fetch"
-          ? "Unable to connect to the server. Please try again."
-          : `Error adding task: ${err.message}`
-      );
-    }
+    };
+
+    attemptPost(0);
   };
 
   const handleInputChange = (e) => {
@@ -419,7 +434,6 @@ export default function TodoApp() {
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-opacity-30 backdrop-blur-lg p-4">
           <div className="bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-md animate-fadeIn scale-95 sm:scale-100 transition-all duration-300">
-            {/* Header */}
             <div className="p-6 pb-3 flex justify-between items-center border-b">
               <h3 className="text-2xl font-bold text-gray-900">
                 Create New Task
@@ -432,7 +446,6 @@ export default function TodoApp() {
               </button>
             </div>
 
-            {/* Content */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -476,6 +489,25 @@ export default function TodoApp() {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
                   />
                 </div>
+                <div>
+                  <label
+                    htmlFor="priority"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Priority
+                  </label>
+                  <select
+                    id="priority"
+                    value={newTask.priority}
+                    onChange={handleInputChange}
+                    required
+                    className="h-10 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
                 {modalError && (
                   <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-200 flex items-center gap-2">
                     <X className="w-4 h-4" />
@@ -483,7 +515,6 @@ export default function TodoApp() {
                   </div>
                 )}
               </div>
-              {/* Footer */}
               <div className="flex items-center justify-end gap-3 pt-6 mt-2 border-t border-gray-100">
                 <button
                   type="button"
@@ -511,7 +542,7 @@ export default function TodoApp() {
 
       <footer className="text-center py-8 mt-8 text-sm text-gray-600">
         <p className="flex items-center justify-center gap-1">
-          <span>© 2024 Developed by Nitin Reddy.</span>
+          <span>© 2025 Developed by Nitin Reddy.</span>
           <span className="text-blue-600">All rights reserved.</span>
         </p>
       </footer>
