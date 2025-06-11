@@ -5,14 +5,20 @@ import {
   Loader2,
   X,
   Clock,
-  Calendar,
   PlusCircle,
   Search,
   Filter,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useRouter } from "next/router";
+
+const API_BASE_URL = "https://nitin-flask-backend-todo.onrender.com/api";
 
 export default function TodoApp() {
+  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
+  const router = useRouter();
+
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,13 +33,22 @@ export default function TodoApp() {
   const [filter, setFilter] = useState("all");
 
   useEffect(() => {
-    fetchTasks();
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchTasks();
+    }
+
     const handleEscape = (e) => {
       if (e.key === "Escape") closeModal();
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, []);
+  }, [isAuthenticated]);
 
   const closeModal = () => {
     setShowModal(false);
@@ -50,10 +65,10 @@ export default function TodoApp() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        const response = await fetch(
-          "https://nitinreddy118.pythonanywhere.com/api/tasks",
-          { signal: controller.signal }
-        );
+        const response = await fetch(`${API_BASE_URL}/tasks`, {
+          signal: controller.signal,
+          credentials: "include",
+        });
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -93,14 +108,12 @@ export default function TodoApp() {
     );
 
     try {
-      const response = await fetch(
-        `https://nitinreddy118.pythonanywhere.com/api/tasks/${taskId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+        credentials: "include",
+      });
 
       if (!response.ok) {
         throw new Error(`Failed to update task. Status: ${response.status}`);
@@ -118,12 +131,10 @@ export default function TodoApp() {
     setTasks(tasks.filter((task) => task.id !== taskId));
 
     try {
-      const response = await fetch(
-        `https://nitinreddy118.pythonanywhere.com/api/tasks/${taskId}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
 
       if (!response.ok) {
         throw new Error(`Failed to delete task. Status: ${response.status}`);
@@ -148,21 +159,19 @@ export default function TodoApp() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        const response = await fetch(
-          "https://nitinreddy118.pythonanywhere.com/api/tasks",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: newTask.name,
-              description: newTask.description,
-              status: "pending",
-              priority: newTask.priority,
-              createdAt: new Date().toISOString(),
-            }),
-            signal: controller.signal,
-          }
-        );
+        const response = await fetch(`${API_BASE_URL}/tasks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: newTask.name,
+            description: newTask.description,
+            status: "pending",
+            priority: newTask.priority,
+            createdAt: new Date().toISOString(),
+          }),
+          signal: controller.signal,
+          credentials: "include",
+        });
         clearTimeout(timeoutId);
 
         if (response.ok) {
@@ -232,57 +241,56 @@ export default function TodoApp() {
 
   const filteredTasks = getFilteredTasks();
 
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <header className="mb-8">
-          <div className="flex justify-between items-center flex-wrap">
-            <div className="m-2.5">
-              <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-                Task Dashboard
-              </h1>
-              <p className="text-gray-600">Organize your day efficiently</p>
-            </div>
-            <div>
-              <button
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-2 px-4 rounded-lg m-2.5 hover:from-blue-600 hover:to-indigo-700 transition flex items-center gap-2 shadow-md"
-                onClick={() => setShowModal(true)}
-              >
-                <PlusCircle className="w-5 h-5" /> New Task
-              </button>
-            </div>
+        <header className="flex justify-between items-center mb-8 pb-4 border-b">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Welcome, {user?.username || "User"}!
+            </h1>
+            <p className="text-gray-600">Here are your tasks for today.</p>
           </div>
-
-          <div className="mt-6 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-grow">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search tasks..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Filter className="h-5 w-5 text-gray-400" />
-              </div>
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="pl-10 pr-8 py-2 rounded-md border border-gray-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All Tasks</option>
-                <option value="pending">Pending</option>
-                <option value="done">Completed</option>
-              </select>
-            </div>
-          </div>
+          <button
+            onClick={logout}
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+          >
+            Logout
+          </button>
         </header>
+
+        <div className="flex justify-between items-center mb-6">
+  <div className="relative">
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <Filter className="h-5 w-5 text-gray-400" />
+    </div>
+    <select 
+      value={filter} 
+      onChange={(e) => setFilter(e.target.value)}
+      className="pl-10 pr-8 py-2 rounded-md border border-gray-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    >
+      <option value="all">All Tasks</option>
+      <option value="pending">Pending</option>
+      <option value="done">Completed</option>
+    </select>
+  </div>
+
+  <button 
+    onClick={() => setShowModal(true)}
+    className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-2 px-4 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition flex items-center gap-2 shadow-md"
+  >
+    <PlusCircle className="w-5 h-5" />
+    New Task
+  </button>
+</div>
 
         <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
           <div className="p-6 border-b border-gray-200 flex justify-between items-center">
@@ -489,7 +497,7 @@ export default function TodoApp() {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
                   />
                 </div>
-                
+
                 {modalError && (
                   <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-200 flex items-center gap-2">
                     <X className="w-4 h-4" />
@@ -524,7 +532,7 @@ export default function TodoApp() {
 
       <footer className="text-center py-8 mt-8 text-sm text-gray-600">
         <p className="flex items-center justify-center gap-1">
-          <span>© 2025 Developed by Nitin Reddy.</span>
+          <span> 2025  Developed by Nitin Reddy.</span>
           <span className="text-blue-600">All rights reserved.</span>
         </p>
       </footer>
